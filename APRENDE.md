@@ -1,328 +1,192 @@
-# SGF Frontend — Guía de aprendizaje React
+# Cómo se conectan las capas
 
-> Escrita para alguien que viene de Vue 3. Cada decisión está explicada con el "por qué".
+## La regla de oro
 
----
+Cada capa tiene una sola responsabilidad. Ninguna capa habla con una que no le toca.
 
-## Cómo arrancar el proyecto
-
-```bash
-cd AppDiaIa/frontend
-npm run dev        # arranca en localhost:5173
-npm run build      # build de producción
-npx tsc --noEmit   # solo chequeo de tipos
 ```
-
-El backend tiene que estar corriendo en `:3000` para que las llamadas API funcionen:
-```bash
-# en AppDiaIa/backend
-pnpm nx serve @org/api
+Página → Hook → Service → axios.ts → Backend
 ```
 
 ---
 
-## Stack elegido y por qué
+## Las capas y qué hace cada una
 
-| Herramienta | Equivalente Vue | Por qué esta y no otra |
-|-------------|-----------------|------------------------|
-| **Vite** | Vite | Mismo. Estándar de industria. |
-| **React 19** | Vue 3 | Target del aprendizaje |
-| **TypeScript** | TypeScript | Mismo. Siempre strict. |
-| **React Router v7** | Vue Router | El router más usado en React, docs excelentes |
-| **TanStack Query v5** | (no hay equiv directo) | Maneja server state: loading, cache, refetch, errores. Sin él usarías `useEffect` + `useState` para cada llamada API — un desastre |
-| **Zustand** | Pinia | Store de cliente (tokens, user). 1KB, sin boilerplate, sin Provider |
-| **Axios** | Axios | Mismo. Interceptores para JWT |
-| **React Hook Form + Zod** | VeeValidate + Zod | Forms con validación tipada |
-| **Shadcn/ui** | — | Componentes que viven en TU código, no en node_modules |
-| **Tailwind CSS v4** | — | CSS utility-first, el más demandado en el mercado |
+### `lib/axios.ts` — el cliente HTTP configurado (se toca una sola vez)
 
----
+Es un fetch preconfigurado. Se crea una instancia con la URL base y dos interceptors:
 
-## Estructura de carpetas
+- **Request interceptor**: antes de CADA request, lee el token del store y lo pone en el header `Authorization`. Automático, sin que nadie lo pida.
+- **Response interceptor**: si cualquier response es 401 (token expirado), renueva el token silenciosamente y reintenta la request original. El hook ni se entera.
 
 ```
-src/
-├── components/
-│   └── ui/              ← Componentes de Shadcn (son TUYOS, puedes editarlos)
-│       ├── button.tsx
-│       ├── input.tsx
-│       └── label.tsx
-│
-├── features/            ← Un módulo por dominio de negocio
-│   ├── auth/
-│   │   ├── components/  ← Solo presentación (LoginForm)
-│   │   ├── hooks/       ← Lógica con TanStack Query (useLogin)
-│   │   ├── services/    ← Solo llamadas HTTP (authService)
-│   │   └── LoginPage.tsx
-│   └── dashboard/
-│       └── DashboardPage.tsx
-│
-├── layouts/
-│   └── AppLayout.tsx    ← Sidebar + Outlet (estructura de página)
-│
-├── lib/
-│   ├── axios.ts         ← Instancia HTTP configurada + interceptores JWT ⭐
-│   ├── query-client.ts  ← Config global de TanStack Query
-│   └── utils.ts         ← cn() helper de Shadcn (combina clases Tailwind)
-│
-├── router/
-│   ├── index.tsx        ← Árbol de rutas
-│   └── ProtectedRoute.tsx ← Guard: si no estás autenticado → /login
-│
-├── store/
-│   └── auth.store.ts    ← Zustand: tokens, user, isAuthenticated ⭐
-│
-├── types/
-│   └── api.types.ts     ← Tipos TypeScript de la API (User, LoginResponse…)
-│
-├── index.css            ← Tailwind + variables de color de Shadcn
-└── main.tsx             ← Punto de entrada, monta los providers
-```
-
-### La regla de capas (igual que el backend)
-
-```
-services/  →  solo llamadas HTTP        (como Repository en NestJS)
-hooks/     →  lógica + TanStack Query   (como Service en NestJS)
-components/→  solo presentación         (como Controller, pero visual)
-store/     →  estado del cliente        (tokens, UI state)
-```
-
-**Nunca** pongas una llamada `axios.get(...)` directamente en un componente.
-**Siempre** va en `services/` y se consume desde un hook.
-
----
-
-## Los dos archivos más importantes
-
-### `src/lib/axios.ts` — El corazón del plumbing HTTP
-
-Este archivo hace tres cosas:
-
-**1. Crea la instancia base de Axios**
-```ts
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL ?? '/api',
-})
-```
-En lugar de `axios.get('http://localhost:3000/api/users')` en cada sitio,
-usas `api.get('/users')` y la baseURL se añade automáticamente.
-
-**2. Request interceptor — añade el token automáticamente**
-```ts
-api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().accessToken
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
-```
-Equivale a hacer `Authorization: Bearer xxx` en cada request, pero sin tener
-que escribirlo en cada llamada. El interceptor lo hace solo.
-
-> 💡 `useAuthStore.getState()` — fuera de un componente React no puedes usar hooks
-> (los hooks solo funcionan dentro de componentes/otros hooks). Zustand tiene
-> `.getState()` para acceder al store desde cualquier sitio.
-
-**3. Response interceptor — refresh token automático**
-
-Este es el más complejo pero el más valioso de entender:
-
-```
-Request falla con 401 (token expirado)
+api.post('/auth/login', data)
+    ↓ [interceptor de request]
+    añade Bearer token
     ↓
-¿Ya está haciendo refresh? → sí → ponemos la request en cola
-    ↓ no
-Llamamos a POST /auth/refresh con el refreshToken
-    ↓
-Guardamos los nuevos tokens en el store
-    ↓
-Reintentamos TODAS las requests que estaban en cola con el nuevo token
-    ↓
-Si el refresh también falla → logout + redirect /login
+    fetch real al backend
+    ↓ [interceptor de response]
+    200 → pasa la respuesta
+    401 → renueva token, reintenta
+    otro error → lo propaga al service
 ```
 
-Sin esto, el usuario vería un error 401 cada vez que su token expira (cada 15-60 min).
-Con esto, el token se renueva de forma invisible.
+**No se toca cuando añades nuevos endpoints.** Los interceptors se disparan solos en todo GET, POST, DELETE, etc.
 
 ---
 
-### `src/store/auth.store.ts` — Estado global de autenticación
+### `services/*.service.ts` — los contratos con el backend
+
+Solo define qué endpoints existen y cómo se llaman. Usa `api` (la instancia de axios.ts), no fetch ni axios directo.
 
 ```ts
-// Vue (Pinia)
-export const useAuthStore = defineStore('auth', {
-  state: () => ({ accessToken: null, user: null }),
-  actions: {
-    setAuth(token, user) { this.accessToken = token; this.user = user }
-  }
-})
-
-// React (Zustand) — prácticamente igual
-export const useAuthStore = create<AuthStore>()(
-  persist(
-    (set) => ({
-      accessToken: null,
-      user: null,
-      setAuth: (token, user) => set({ accessToken: token, user }),
-    }),
-    { name: 'sgf-auth' }  // ← persiste en localStorage con esta key
-  )
-)
-```
-
-`persist` es middleware de Zustand — guarda el estado en `localStorage`
-automáticamente. Si el usuario recarga la página, sigue autenticado.
-
-**Cómo usarlo en un componente:**
-```tsx
-// Solo te suscribes a lo que necesitas (optimización de re-renders)
-const user = useAuthStore((s) => s.user)
-const isAuthenticated = useAuthStore((s) => s.isAuthenticated)
-```
-
----
-
-## Routing: rutas protegidas
-
-```tsx
-// src/router/index.tsx
-createBrowserRouter([
-  { path: '/login', element: <LoginPage /> },         // pública
-  {
-    element: <ProtectedRoute />,                       // guard
-    children: [
-      {
-        element: <AppLayout />,                        // layout con sidebar
-        children: [
-          { path: '/', element: <DashboardPage /> },  // protegida
-        ],
-      },
-    ],
-  },
-])
-```
-
-`ProtectedRoute` lee `isAuthenticated` del store. Si es `false`, redirige a `/login`.
-Es el equivalente a los navigation guards de Vue Router (`router.beforeEach`).
-
----
-
-## TanStack Query — server state
-
-En Vue sin React Query harías:
-```ts
-// ❌ el patrón "manual" que NO queremos
-const users = ref([])
-const loading = ref(false)
-const error = ref(null)
-
-onMounted(async () => {
-  loading.value = true
-  try {
-    users.value = await fetchUsers()
-  } catch(e) {
-    error.value = e
-  } finally {
-    loading.value = false
-  }
-})
-```
-
-Con TanStack Query:
-```ts
-// ✅ esto hace lo mismo + cache + refetch + deduplication
-const { data: users, isLoading, isError } = useQuery({
-  queryKey: ['users'],
-  queryFn: () => usersService.getAll(),
-})
-```
-
-`queryKey` es importante: es la "clave de caché". Si dos componentes piden
-`['users']`, TanStack Query hace **una sola** petición HTTP.
-
----
-
-## Mutations — escribir datos
-
-```ts
-// Para operaciones que modifican datos (POST, PATCH, DELETE)
-const { mutate: login, isPending, isError } = useMutation({
-  mutationFn: authService.login,          // la función que llama a la API
-  onSuccess: ({ data }) => {              // callback cuando va bien
-    setAuth(data.accessToken, data.refreshToken, data.user)
-    navigate('/')
-  },
-})
-
-// En el form:
-<form onSubmit={handleSubmit((data) => login(data))}>
-```
-
----
-
-## React Hook Form + Zod
-
-```ts
-const schema = z.object({
-  email: z.string().email('Correo inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
-})
-
-type LoginFormData = z.infer<typeof schema>  // TypeScript infiere el tipo del schema
-```
-
-`z.infer<typeof schema>` es la magia: el tipo TypeScript **se genera** del schema
-de validación. No hay que definir el tipo por separado — si cambias el schema,
-el tipo cambia automáticamente.
-
----
-
-## Shadcn/ui — componentes que son tuyos
-
-Cuando ejecutas:
-```bash
-npx shadcn add button
-```
-
-Crea `src/components/ui/button.tsx` en **tu proyecto**. No viene de `node_modules`.
-Puedes abrirlo, editarlo, cambiar clases, añadir variantes. Eso es lo que
-diferencia a Shadcn de Ant Design.
-
-```tsx
-// src/components/ui/button.tsx — es tuyo, cámbialo como quieras
-export function Button({ className, variant, ...props }) {
-  return (
-    <button
-      className={cn(buttonVariants({ variant }), className)}
-      {...props}
-    />
-  )
+export const authService = {
+  login: (data: LoginRequest) => api.post<LoginResponse>('/auth/login', data),
+  logout: ()                  => api.post('/auth/logout'),
+  me: ()                      => api.get<User>('/auth/me'),
 }
 ```
 
+No tiene lógica. No sabe si hay un usuario, un store ni una pantalla. Solo sabe: "este endpoint existe, recibe esto, devuelve esto".
+
+Si mañana cambia una URL, la cambias aquí. En un solo lugar.
+
 ---
 
-## Tailwind CSS — utilidades en lugar de clases custom
+### `hooks/use*.ts` — la lógica del caso de uso
 
-```tsx
-// Sin Tailwind
-<div className="login-card">  {/* tienes que ir al CSS a ver qué hace */}
+Aquí vive TODO lo que piensa la app en el cliente:
+- Llama al service para hacer el HTTP
+- Si funciona → guarda en el store, navega, etc.
+- Si falla → extrae el mensaje del backend y lo expone listo para pintar
 
-// Con Tailwind
-<div className="rounded-xl border bg-card p-8 shadow-lg">
-  {/* lees directamente qué estilos tiene */}
+Para **acciones** (crear, login, borrar) → `useMutation`
+Para **leer datos** → `useQuery`
+
+```ts
+// Acción (POST, login, etc.)
+export function useLogin() {
+  const mutation = useMutation({
+    mutationFn: authService.login,       // delega el HTTP
+    onSuccess: ({ data }) => {
+      setAuth(...)                        // guarda en store
+      navigate('/')                       // navega
+    },
+  })
+  return {
+    ...mutation,
+    loginError: mutation.error?.response?.data?.message ?? null,
+  }
+}
+
+// Lectura (GET)
+export function useUsers() {
+  return useQuery({
+    queryKey: ['users'],
+    queryFn: () => userService.getAll(),
+  })
+}
 ```
 
-Las clases de color (`bg-card`, `text-muted-foreground`, etc.) son variables
-CSS que Shadcn define en `index.css`. Se adaptan automáticamente al dark/light mode.
+El hook **no sabe que existe un botón ni un input**. Solo expone estado y funciones.
 
 ---
 
-## Próximos pasos (features a construir)
+### `store/*.store.ts` — el estado global
 
-- [ ] **Logout** — botón en sidebar que llama `authService.logout()` y limpia el store
-- [ ] **Dashboard** — cards con stats (empleados, documentos, permisos)
-- [ ] **Users** — tabla con CRUD completo, formulario con React Hook Form
-- [ ] **Permissions** — tabla con tabs (próximos 7/15/30 días)
-- [ ] **Sales chart** — gráfica de ventas con Recharts
-- [ ] **Error handling global** — toast notifications con Shadcn Sonner
+Solo guarda datos que necesitan vivir entre navegaciones: sesión, tokens, usuario autenticado.
+
+El hook escribe en el store. La página puede leer del store directamente si solo necesita datos (sin lógica).
+
+**No se usa para guardar cualquier cosa.** Si un dato solo lo usa una pantalla, va en estado local con `useState`.
+
+---
+
+### `pages/*.tsx` — solo pinta y reacciona
+
+No sabe de HTTP, tokens ni stores (salvo leer datos simples). Solo sabe:
+- Llamar a funciones del hook cuando el usuario actúa
+- Pintar lo que el hook expone (`isLoading`, `data`, `error`)
+
+```tsx
+const { mutate: login, isPending, loginError } = useLogin()
+
+<form onSubmit={handleSubmit((data) => login(data))}>
+  {loginError && <p>{loginError}</p>}
+  <Button disabled={isPending}>Entrar</Button>
+</form>
+```
+
+---
+
+## Flujo completo — un login de principio a fin
+
+```
+1. Usuario escribe email y contraseña y presiona "Entrar"
+
+2. LoginPage → handleSubmit → login(data)
+   La página no sabe qué pasa después. Solo llama a la función.
+
+3. useLogin → useMutation → authService.login(data)
+   El hook orquesta: llama al service con los datos.
+
+4. authService → api.post('/auth/login', data)
+   El service construye la request y la pasa a axios.
+
+5. axios.ts interceptor de REQUEST
+   Lee el token del store (null en login) → no añade nada → envía.
+
+6. Backend procesa → responde 200 con { accessToken, refreshToken, user }
+
+7. axios.ts interceptor de RESPONSE
+   Respuesta 200 → la deja pasar sin tocarla.
+
+8. authService devuelve la respuesta al hook.
+
+9. useLogin.onSuccess
+   Guarda tokens y usuario en el store → navega a '/'.
+
+10. La página desaparece. Aparece el Dashboard.
+```
+
+Si las credenciales son incorrectas, el backend responde 401 con `{ message: 'Credenciales inválidas' }`.
+El hook expone ese mensaje como `loginError`. La página lo pinta.
+
+---
+
+## Flujo completo — un GET (leer datos)
+
+```
+1. El componente monta en pantalla
+
+2. Página usa el hook → useQuery se activa automáticamente
+
+3. Hook → service.getAll() → api.get('/users')
+
+4. axios.ts interceptor de REQUEST
+   Lee el token del store → añade Authorization: Bearer xxx → envía.
+
+5. Backend responde 200 con los datos
+
+6. axios.ts interceptor de RESPONSE → deja pasar.
+
+7. Hook recibe los datos → los expone como { data, isLoading: false }
+
+8. Página pinta los datos.
+```
+
+Si el token expiró, el response interceptor de axios lo renueva solo en el paso 5-6,
+sin que el hook ni la página lo sepan.
+
+---
+
+## Regla para saber dónde va cada cosa
+
+| Pregunta                               | Va en          |
+|----------------------------------------|----------------|
+| ¿Renderiza UI?                         | Página         |
+| ¿Decide qué hacer con una acción?      | Hook           |
+| ¿Habla con el backend?                 | Service        |
+| ¿Configura cómo se hacen los requests? | axios.ts       |
+| ¿Datos que persisten entre pantallas?  | Store          |
+| ¿Datos que solo usa un componente?     | useState local |

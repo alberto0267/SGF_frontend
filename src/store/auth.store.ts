@@ -26,6 +26,13 @@ export const useAuthStore = create<AuthStore>()(
       clearAuth: () =>
         set({ accessToken: null, refreshToken: null, user: null, isAuthenticated: false }),
     }),
-    { name: 'sgf-auth' }
+    {
+      name: 'sgf-auth',
+      partialize: (state) => ({
+        refreshToken: state.refreshToken,
+        user: state.user,
+        isAuthenticated: state.isAuthenticated,
+      }),
+    }
   )
 )

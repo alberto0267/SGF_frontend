@@ -1,0 +1,61 @@
+name: Update Changelog
+
+on:
+  push:
+    branches:
+      - master
+      - devs
+
+permissions:
+  contents: write
+
+jobs:
+  update-changelog:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ensure changelog exists
+        run: |
+          if [ ! -f CHANGELOG.md ]; then
+            cat <<'EOF' > CHANGELOG.md
+            # Changelog
+
+            Registro automatico de commits en ramas `master` y `devs`.
+            EOF
+          fi
+
+      - name: Append push commits to changelog
+        env:
+          EVENT_PATH: ${{ github.event_path }}
+          BRANCH_NAME: ${{ github.ref_name }}
+          PUSH_DATE: ${{ github.event.head_commit.timestamp }}
+          COMPARE_URL: ${{ github.event.compare }}
+        run: |
+          {
+            echo ""
+            echo "## ${BRANCH_NAME} - ${PUSH_DATE}"
+            echo ""
+            jq -r '.commits[] | "- `\(.id[0:7])` | \(.author.name) | \(.message | gsub("\n"; " "))"' "$EVENT_PATH"
+            echo ""
+            echo "[Ver comparacion del push](${COMPARE_URL})"
+          } >> CHANGELOG.md
+
+      - name: Commit changelog changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+
+          git commit -m "chore(changelog): update changelog [skip ci]"
+          git push

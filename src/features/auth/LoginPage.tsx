@@ -7,17 +7,18 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useLogin } from './hooks/useLogin'
+import { LoginBackground } from './components/LoginBackground'
 
 const schema = z.object({
   email: z.email('Correo inválido'),
-  password: z.string().min(6, 'Mínimo 6 caracteres'),
+  password: z.string().min(1, 'La contraseña es obligatoria'),
 })
 
 type LoginFormData = z.infer<typeof schema>
 
 export function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
-  const { mutate: login, isPending, isError } = useLogin()
+  const { mutate: login, isPending, loginError } = useLogin()
 
   const {
     register,
@@ -29,18 +30,23 @@ export function LoginPage() {
 
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center px-4"
+      className="relative z-0 min-h-screen overflow-hidden flex flex-col items-center justify-center px-4 gap-6"
       style={{
-        background: 'radial-gradient(ellipse at 50% 40%, #3b1f6b 0%, #1e1145 40%, #0f0a2e 100%)',
+        background: 'linear-gradient(to bottom, #11314E 0%, #1e1145 55%, #14093a 100%)',
       }}
     >
-      {/* Card */}
-      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl py-8 px-8">
+      <LoginBackground />
 
-        {/* Subtítulo */}
-        <p className="text-center text-xs font-semibold tracking-widest text-gray-400 uppercase mb-4">
+      {/* Header: logo + subtítulo, fuera del card */}
+      <div className="flex flex-col items-center gap-3">
+        <img src="/logo.png" alt="SGF" className="w-[200px] h-[200px] drop-shadow-xl" />
+        <p className="text-xs font-semibold tracking-widest text-white/50 uppercase">
           Sistema de Gestión de Franquicias
         </p>
+      </div>
+
+      {/* Card */}
+      <div className="w-full max-w-sm bg-white rounded-2xl shadow-2xl py-8 px-8">
 
         <h1 className="text-2xl font-bold text-gray-800 text-center">Bienvenido</h1>
         <p className="text-sm text-gray-500 text-center mt-1 mb-6">
@@ -62,11 +68,15 @@ export function LoginPage() {
                 placeholder="usuario@empresa.com"
                 autoComplete="email"
                 className="pl-9"
+                aria-invalid={!!errors.email}
+                aria-describedby={errors.email ? 'email-error' : undefined}
                 {...register('email')}
               />
             </div>
             {errors.email && (
-              <p className="text-xs text-red-500">{errors.email.message}</p>
+              <p id="email-error" className="text-xs text-red-500" role="alert">
+                {errors.email.message}
+              </p>
             )}
           </div>
 
@@ -81,19 +91,23 @@ export function LoginPage() {
                 type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
                 className="pr-9"
+                aria-invalid={!!errors.password}
+                aria-describedby={errors.password ? 'password-error' : undefined}
                 {...register('password')}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                tabIndex={-1}
               >
                 {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
               </button>
             </div>
             {errors.password && (
-              <p className="text-xs text-red-500">{errors.password.message}</p>
+              <p id="password-error" className="text-xs text-red-500" role="alert">
+                {errors.password.message}
+              </p>
             )}
           </div>
 
@@ -107,8 +121,10 @@ export function LoginPage() {
             </button>
           </div>
 
-          {isError && (
-            <p className="text-sm text-red-500 text-center">Credenciales incorrectas</p>
+          {loginError && (
+            <p className="text-sm text-red-500 text-center" role="alert">
+              {loginError}
+            </p>
           )}
 
           <Button
@@ -122,7 +138,7 @@ export function LoginPage() {
       </div>
 
       {/* Footer */}
-      <p className="text-xs text-purple-300/60 mt-6">
+      <p className="text-xs text-purple-300/60">
         SGFe © 2025 · Todos los derechos reservados
       </p>
     </div>
