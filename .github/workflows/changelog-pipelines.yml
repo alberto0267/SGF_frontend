@@ -23,11 +23,7 @@ jobs:
       - name: Ensure changelog exists
         run: |
           if [ ! -f CHANGELOG.md ]; then
-            cat <<'EOF' > CHANGELOG.md
-            # Changelog
-
-            Registro automatico de commits en ramas `master` y `devs`.
-            EOF
+            printf '# Changelog\n\nRegistro automatico de commits en ramas `master` y `devs`.\n' > CHANGELOG.md
           fi
 
       - name: Append push commits to changelog
