@@ -3,10 +3,11 @@ import { ProtectedRoute } from './ProtectedRoute'
 import { AppLayout } from '@/layouts/AppLayout'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
+import { UsersPage } from '@/features/users/UsersPage'
 
 export const router = createBrowserRouter([
   {
-    path: '/login',
+    path: '/',
     element: <LoginPage />,
   },
   {
@@ -15,7 +16,8 @@ export const router = createBrowserRouter([
       {
         element: <AppLayout />,
         children: [
-          { path: '/', element: <DashboardPage /> },
+          { path: '/dashboard', element: <DashboardPage /> },
+          { path: '/usuarios',  element: <UsersPage /> },
         ],
       },
     ],

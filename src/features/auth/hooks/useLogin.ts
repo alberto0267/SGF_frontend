@@ -16,7 +16,7 @@ export function useLogin() {
     mutationFn: authService.login,
     onSuccess: ({ data }) => {
       setAuth(data.accessToken, data.refreshToken, data.user)
-      navigate('/')
+      navigate('/dashboard')
     },
   })
 
