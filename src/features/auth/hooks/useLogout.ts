@@ -9,9 +9,9 @@ export function useLogout() {
 
   return useMutation({
     mutationFn: authService.logout,
-    onSuccess: () => {
+    onSettled: () => {
       clearAuth()
-      navigate('/login')
+      navigate('/')
     },
   })
 }

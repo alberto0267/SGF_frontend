@@ -47,8 +47,10 @@ export interface ApiCompanySelect {
 }
 
 export const companiesService = {
-  getAll:  () => api.get<CompaniesResponse>('/companies').then((r) => r.data),
-  create:  (payload: CreateCompanyPayload) => api.post('/companies/create-company', payload),
-  select:  (params?: { name?: string; nif?: string }) =>
+  getAll:        () => api.get<CompaniesResponse>('/companies').then((r) => r.data),
+  create:        (payload: CreateCompanyPayload) => api.post('/companies/create-company', payload),
+  select:        (params?: { name?: string; nif?: string }) =>
     api.get<ApiCompanySelect[]>('/companies/select', { params }).then((r) => r.data),
+  toggleActive:  (uuid: string, active: boolean) =>
+    api.patch(`/companies/${uuid}/active`, { active }).then((r) => r.data),
 }

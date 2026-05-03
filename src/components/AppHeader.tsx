@@ -6,7 +6,9 @@ import { useLogout } from '@/features/auth/hooks/useLogout'
 
 export function AppHeader() {
   const user = useAuthStore((s) => s.user)
-  const initials = user ? `${user.firstName[0]}${user.lastName[0]}` : 'U'
+  const initials = user
+    ? user.name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+    : 'U'
   const { mutate: logout, isPending } = useLogout()
 
   const [open, setOpen] = useState(false)

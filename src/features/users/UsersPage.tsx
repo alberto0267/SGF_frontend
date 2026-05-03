@@ -5,6 +5,7 @@ import { CreateWorkcenterModal } from '@/features/workcenters/components/CreateW
 import { useUsers } from './hooks/useUsers'
 import type { ApiUser } from './services/users.service'
 import { useCompanies } from '@/features/companies/hooks/useCompanies'
+import { useToggleCompanyActive } from '@/features/companies/hooks/useToggleCompanyActive'
 import type { ApiCompany } from '@/features/companies/services/companies.service'
 import { useWorkcenters } from '@/features/workcenters/hooks/useWorkcenters'
 import type { ApiWorkcenter } from '@/features/workcenters/services/workcenters.service'
@@ -95,6 +96,7 @@ function UsersTable() {
 // ── Tabla Companies ───────────────────────────────────────────────────────────
 function CompaniesTable() {
   const { data, isLoading, isError } = useCompanies()
+  const { mutate: toggleActive, isPending } = useToggleCompanyActive()
 
   if (isLoading) return <p className="text-gray-400 text-sm text-center py-12">Cargando empresas…</p>
   if (isError)   return <p className="text-red-500 text-sm text-center py-12">Error al cargar las empresas.</p>
@@ -122,7 +124,19 @@ function CompaniesTable() {
             <td className="px-4 py-3 text-gray-500">{company.phone ?? '—'}</td>
             <td className="px-4 py-3 text-gray-500 text-center">{company.user_count}</td>
             <td className="px-4 py-3 text-gray-500 text-center">{company.workcenter_count}</td>
-            <td className="px-4 py-3"><StatusBadge active={company.active} /></td>
+            <td className="px-4 py-3">
+              <button
+                disabled={isPending}
+                onClick={() => toggleActive({ uuid: company.uuid, active: company.active === 0 })}
+                className={`relative inline-flex w-10 h-6 rounded-full transition-colors disabled:opacity-50 cursor-pointer ${
+                  company.active ? 'bg-green-500' : 'bg-gray-300'
+                }`}
+              >
+                <span className={`absolute top-1 w-4 h-4 rounded-full bg-white shadow transition-transform ${
+                  company.active ? 'translate-x-5' : 'translate-x-1'
+                }`} />
+              </button>
+            </td>
             <td className="px-4 py-3 text-gray-400 text-xs">
               {new Date(company.created_at).toLocaleDateString('es-ES')}
             </td>

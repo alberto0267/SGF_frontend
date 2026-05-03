@@ -3,12 +3,10 @@ export type UserRole = 'SuperAdmin' | 'Owner' | 'Manager' | 'Employee'
 export interface User {
   uuid: string
   email: string
-  firstName: string
-  lastName: string
+  name: string
   role: UserRole
-  companyUuid: string | null
-  isActive: boolean
-  createdAt: string
+  companyName: string | null
+  active: boolean
 }
 
 export interface LoginRequest {

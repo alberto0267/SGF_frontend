@@ -9,6 +9,7 @@ interface AuthStore {
   isAuthenticated: boolean
   setAuth: (accessToken: string, refreshToken: string, user: User) => void
   setTokens: (accessToken: string, refreshToken: string) => void
+  setUser: (user: User) => void
   clearAuth: () => void
 }
 
@@ -23,6 +24,8 @@ export const useAuthStore = create<AuthStore>()(
         set({ accessToken, refreshToken, user, isAuthenticated: true }),
       setTokens: (accessToken, refreshToken) =>
         set({ accessToken, refreshToken }),
+      setUser: (user) =>
+        set({ user }),
       clearAuth: () =>
         set({ accessToken: null, refreshToken: null, user: null, isAuthenticated: false }),
     }),
