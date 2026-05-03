@@ -28,3 +28,11 @@ Registro automatico de commits en ramas `master` y `devs`.
 - `c467d9c` | alberto0267 | Merge branch 'master' of https://github.com/alberto0267/SGF_frontend
 
 [Ver comparacion del push](https://github.com/alberto0267/SGF_frontend/compare/74544a300606...c467d9cf50d8)
+
+## master - 2026-05-03T11:40:26+02:00
+
+- `7091445` | alberto0267 | fix: refresh token fix
+- `699c4c8` | alberto0267 | Merge branch 'master' of https://github.com/alberto0267/SGF_frontend
+- `2f91c1a` | alberto0267 | feat: add edita update user and wc
+
+[Ver comparacion del push](https://github.com/alberto0267/SGF_frontend/compare/20a52cf75ca6...2f91c1a12528)
