@@ -14,3 +14,10 @@ Registro automatico de commits en ramas `master` y `devs`.
 - `79c0245` | alberto0267 | Merge branch 'master' of https://github.com/alberto0267/SGF_frontend
 
 [Ver comparacion del push](https://github.com/alberto0267/SGF_frontend/compare/6a70c740bd93...79c0245fb8a3)
+
+## master - 2026-05-03T10:21:00+02:00
+
+- `c35dbc5` | alberto0267 | feat: add active disacti cascade
+- `46235e2` | alberto0267 | Merge branch 'master' of https://github.com/alberto0267/SGF_frontend
+
+[Ver comparacion del push](https://github.com/alberto0267/SGF_frontend/compare/d35b6426871d...46235e2a26b9)
