@@ -5,5 +5,6 @@ export function useCompanies() {
   return useQuery({
     queryKey: ['companies'],
     queryFn: companiesService.getAll,
+    staleTime: 0,
   })
 }

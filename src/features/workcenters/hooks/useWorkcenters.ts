@@ -5,5 +5,6 @@ export function useWorkcenters() {
   return useQuery({
     queryKey: ['workcenters'],
     queryFn: workcentersService.getAll,
+    staleTime: 0,
   })
 }

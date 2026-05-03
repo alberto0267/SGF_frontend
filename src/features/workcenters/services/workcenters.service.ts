@@ -27,7 +27,17 @@ export interface CreateWorkcenterPayload {
   email?: string
 }
 
+export interface UpdateWorkcenterPayload {
+  name: string
+  address: string
+  email?: string
+}
+
 export const workcentersService = {
-  getAll:  () => api.get<WorkcentersResponse>('/workcenters').then((r) => r.data),
-  create:  (payload: CreateWorkcenterPayload) => api.post('/workcenters/create-workcenters', payload),
+  getAll:    () => api.get<WorkcentersResponse>('/workcenters').then((r) => r.data),
+  create:    (payload: CreateWorkcenterPayload) => api.post('/workcenters/create-workcenters', payload),
+  update:    (uuid: string, payload: UpdateWorkcenterPayload) =>
+    api.patch(`/workcenters/${uuid}`, payload).then((r) => r.data),
+  deleteOne: (uuid: string) =>
+    api.delete(`/workcenters/${uuid}`).then((r) => r.data),
 }

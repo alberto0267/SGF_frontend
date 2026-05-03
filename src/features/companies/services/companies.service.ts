@@ -40,6 +40,13 @@ export interface CreateCompanyPayload {
   }[]
 }
 
+export interface UpdateCompanyPayload {
+  name: string
+  nif: string
+  address: string
+  phone: string
+}
+
 export interface ApiCompanySelect {
   uuid: string
   name: string
@@ -53,4 +60,8 @@ export const companiesService = {
     api.get<ApiCompanySelect[]>('/companies/select', { params }).then((r) => r.data),
   toggleActive:  (uuid: string, active: boolean) =>
     api.patch(`/companies/${uuid}/active`, { active }).then((r) => r.data),
+  deleteOne:     (uuid: string) =>
+    api.delete(`/companies/${uuid}`).then((r) => r.data),
+  update:        (uuid: string, payload: UpdateCompanyPayload) =>
+    api.patch(`/companies/${uuid}`, payload).then((r) => r.data),
 }

@@ -5,5 +5,6 @@ export function useUsers() {
   return useQuery({
     queryKey: ['users'],
     queryFn: usersService.getAll,
+    staleTime: 0,
   })
 }

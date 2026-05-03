@@ -13,6 +13,19 @@ export interface ApiUser {
   phone: string
 }
 
+export interface UpdateUserPayload {
+  email?:     string
+  firstName?: string
+  lastName?:  string
+  dni?:       string
+  phone?:     string
+  address?:   string
+}
+
 export const usersService = {
-  getAll: () => api.get<ApiUser[]>('/users').then((r) => r.data),
+  getAll:    () => api.get<ApiUser[]>('/users').then((r) => r.data),
+  update:    (uuid: string, payload: UpdateUserPayload) =>
+    api.patch(`/users/${uuid}`, payload).then((r) => r.data),
+  deleteOne: (uuid: string) =>
+    api.delete(`/users/${uuid}`).then((r) => r.data),
 }
