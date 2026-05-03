@@ -48,6 +48,21 @@ api.interceptors.response.use(
       return Promise.reject(error)
     }
 
+    // Cortocircuito para endpoints que no deben entrar en el ciclo de refresh.
+    //
+    // - /auth/refresh: si devuelve 401, el refreshToken también es inválido.
+    //   Intentar refrescarlo causaría un deadlock: el interceptor encolaría la propia
+    //   petición de refresh, que nunca se resolvería porque está esperándose a sí misma.
+    //
+    // - /auth/logout: si falla con 401, el token ya era inválido de todos modos.
+    //   No hay nada que renovar — limpiamos sesión y redirigimos al login.
+    const url = original.url ?? ''
+    if (url.includes('/auth/refresh') || url.includes('/auth/logout')) {
+      useAuthStore.getState().clearAuth()
+      window.location.href = '/'
+      return Promise.reject(error)
+    }
+
     // Si ya hay un refresh en curso, ponemos esta request en cola
     if (isRefreshing) {
       return new Promise<string>((resolve, reject) => {
