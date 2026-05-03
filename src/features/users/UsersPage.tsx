@@ -8,7 +8,8 @@ import { ConfirmModal } from '@/components/ConfirmModal'
 import { EditUserModal } from './components/EditUserModal'
 import { useUsers } from './hooks/useUsers'
 import { useDeleteUser } from './hooks/useDeleteUser'
-import type { ApiUser } from './services/users.service'
+import { useChangeUserRole } from './hooks/useChangeUserRole'
+import type { ApiUser, UserRole } from './services/users.service'
 import { useCompanies } from '@/features/companies/hooks/useCompanies'
 import { useToggleCompanyActive } from '@/features/companies/hooks/useToggleCompanyActive'
 import { useDeleteCompany } from '@/features/companies/hooks/useDeleteCompany'
@@ -24,14 +25,68 @@ const ROLE_BADGE: Record<string, string> = {
   SuperAdmin: 'bg-purple-100 text-purple-700',
   Owner:      'bg-blue-100 text-blue-700',
   Manager:    'bg-cyan-100 text-cyan-700',
-  Employee:   'bg-gray-100 text-gray-600',
+  Employee:   'bg-orange-100 text-orange-700',
 }
 
 function RoleBadge({ role }: { role: string }) {
   return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_BADGE[role] ?? 'bg-gray-100 text-gray-600'}`}>
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${ROLE_BADGE[role] ?? 'bg-orange-100 text-orange-700'}`}>
       {role}
     </span>
+  )
+}
+
+const SELECTABLE_ROLES: UserRole[] = ['Owner', 'Manager', 'Employee']
+
+function RoleSelector({ user }: { user: ApiUser }) {
+  const [open, setOpen] = useState(false)
+  const { mutate: changeRole, isPending } = useChangeUserRole()
+
+  if (user.role === 'SuperAdmin') return <RoleBadge role="SuperAdmin" />
+
+  return (
+    <>
+      <button
+        onClick={() => setOpen(true)}
+        disabled={isPending}
+        className={`text-xs font-medium px-2 py-0.5 rounded-full cursor-pointer transition-opacity disabled:opacity-50 ${ROLE_BADGE[user.role] ?? 'bg-orange-100 text-orange-700'}`}
+      >
+        {user.role}
+      </button>
+
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setOpen(false)} />
+          <div className="relative bg-white rounded-2xl shadow-xl p-5 w-64 flex flex-col gap-3">
+            <p className="text-sm font-semibold text-gray-900">Cambiar rol</p>
+            <p className="text-xs text-gray-400 -mt-2">
+              {user.first_name} {user.last_name}
+            </p>
+            <div className="flex flex-col gap-2">
+              {SELECTABLE_ROLES.map((role) => (
+                <button
+                  key={role}
+                  onClick={() => {
+                    setOpen(false)
+                    if (role !== user.role) changeRole({ uuid: user.uuid, role })
+                  }}
+                  className={`w-full flex items-center justify-between px-3 py-2 rounded-xl border transition-colors text-sm font-medium ${
+                    role === user.role
+                      ? 'border-transparent ' + ROLE_BADGE[role] + ' opacity-50 cursor-default'
+                      : 'border-gray-100 hover:border-gray-200 hover:bg-gray-50 text-gray-700 cursor-pointer'
+                  }`}
+                >
+                  <span>{role}</span>
+                  {role === user.role && (
+                    <span className="text-[10px] font-normal opacity-70">actual</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -94,7 +149,7 @@ function UsersTable() {
               <td className="px-4 py-3 text-gray-500">{user.email}</td>
               <td className="px-4 py-3 text-gray-500 font-mono text-xs">{user.dni ?? '—'}</td>
               <td className="px-4 py-3 text-gray-500">{user.phone}</td>
-              <td className="px-4 py-3"><RoleBadge role={user.role} /></td>
+              <td className="px-4 py-3"><RoleSelector user={user} /></td>
               <td className="px-4 py-3 text-gray-500">{user.company}</td>
               <td className="px-4 py-3"><StatusBadge active={user.active} /></td>
               <td className="px-4 py-3"><ImpersonateButton user={user} /></td>

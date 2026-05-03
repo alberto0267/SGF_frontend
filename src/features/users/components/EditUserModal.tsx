@@ -8,12 +8,20 @@ import { useUpdateUser } from '../hooks/useUpdateUser'
 import type { ApiUser } from '../services/users.service'
 
 const schema = z.object({
-  email:     z.union([z.string().email('Email inválido'), z.literal('')]),
-  firstName: z.string(),
-  lastName:  z.string(),
-  dni:       z.string(),
-  phone:     z.string(),
-  address:   z.string(),
+  email:       z.union([z.string().email('Email inválido'), z.literal('')]),
+  firstName:   z.string(),
+  lastName:    z.string(),
+  dni:         z.string(),
+  phone:       z.string(),
+  address:     z.string(),
+  newPassword: z.union([
+    z.string()
+      .min(8, 'Mínimo 8 caracteres')
+      .regex(/[A-Z]/, 'Debe tener al menos una mayúscula')
+      .regex(/[0-9]/, 'Debe tener al menos un número')
+      .regex(/[^A-Za-z0-9]/, 'Debe tener al menos un carácter especial'),
+    z.literal(''),
+  ]),
 })
 
 type FormData = z.infer<typeof schema>
@@ -45,12 +53,13 @@ export function EditUserModal({ user, onClose }: Props) {
   } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
-      email:     user.email,
-      firstName: user.first_name,
-      lastName:  user.last_name,
-      dni:       user.dni ?? '',
-      phone:     user.phone ?? '',
-      address:   '',
+      email:       user.email,
+      firstName:   user.first_name,
+      lastName:    user.last_name,
+      dni:         user.dni ?? '',
+      phone:       user.phone ?? '',
+      address:     '',
+      newPassword: '',
     },
   })
 
@@ -120,6 +129,22 @@ export function EditUserModal({ user, onClose }: Props) {
             <label className="text-xs font-medium text-gray-600">Dirección</label>
             <input {...register('address')} className={inputClass(!!errors.address)} placeholder="Calle Mayor 1, Madrid" />
             <FieldError message={errors.address?.message} />
+          </div>
+
+          <div className="col-span-2 border-t border-gray-100 pt-3 flex flex-col gap-1">
+            <label className="text-xs font-medium text-gray-600">
+              Nueva contraseña <span className="text-gray-400">(opcional)</span>
+            </label>
+            <input
+              type="password"
+              {...register('newPassword')}
+              className={inputClass(!!errors.newPassword)}
+              placeholder="••••••••"
+            />
+            {errors.newPassword
+              ? <FieldError message={errors.newPassword.message} />
+              : <p className="text-xs text-gray-400">Mínimo 8 caracteres, una mayúscula, un número y un carácter especial</p>
+            }
           </div>
         </form>
 

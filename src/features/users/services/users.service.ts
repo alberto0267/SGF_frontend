@@ -14,18 +14,23 @@ export interface ApiUser {
 }
 
 export interface UpdateUserPayload {
-  email?:     string
-  firstName?: string
-  lastName?:  string
-  dni?:       string
-  phone?:     string
-  address?:   string
+  email?:       string
+  firstName?:   string
+  lastName?:    string
+  dni?:         string
+  phone?:       string
+  address?:     string
+  newPassword?: string
 }
 
+export type UserRole = 'Owner' | 'Manager' | 'Employee'
+
 export const usersService = {
-  getAll:    () => api.get<ApiUser[]>('/users').then((r) => r.data),
-  update:    (uuid: string, payload: UpdateUserPayload) =>
+  getAll:     () => api.get<ApiUser[]>('/users').then((r) => r.data),
+  update:     (uuid: string, payload: UpdateUserPayload) =>
     api.patch(`/users/${uuid}`, payload).then((r) => r.data),
-  deleteOne: (uuid: string) =>
+  changeRole: (uuid: string, role: UserRole) =>
+    api.patch(`/users/${uuid}/role`, { role }).then((r) => r.data),
+  deleteOne:  (uuid: string) =>
     api.delete(`/users/${uuid}`).then((r) => r.data),
 }
